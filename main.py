@@ -20,8 +20,7 @@ st.markdown("""
 # --- Logic Class ---
 class DolphinWebAI:
     def __init__(self):
-        # Cloudflare Tunnel URL ကို ရလာတဲ့အခါ အောက်က localhost နေရာမှာ အစားထိုးပါ
-        # GitHub ထဲမှာ ဒီလိုဖြစ်နေရပါမယ်
+        # အောက်က Link ကို သင့်ရဲ့ လက်ရှိ LocalTunnel Link နဲ့ အမြဲလဲပေးပါ
         self.ollama_url = "https://fifty-dingos-add.loca.lt/api/generate" 
         self.model = "dolphin-llama3:latest"
         self.wiki = wikipediaapi.Wikipedia(
@@ -29,7 +28,7 @@ class DolphinWebAI:
             user_agent='MyEvolvingAI/1.2 (dev@example.com)'
         )
         
-        # Database Setup (Streamlit Cloud ပေါ်မှာ အလိုအလျောက် ဆောက်ပေးပါလိမ့်မယ်)
+        # Database Setup
         self.conn = sqlite3.connect('online_memory.db', check_same_thread=False)
         self.cursor = self.conn.cursor()
         self.cursor.execute('CREATE TABLE IF NOT EXISTS brain (q TEXT, a TEXT)')
@@ -42,6 +41,12 @@ class DolphinWebAI:
         except: return None
 
     def ask(self, prompt, context=""):
+        # LocalTunnel 403 Error ကျော်ဖို့ Header ထည့်ခြင်း
+        headers = {
+            "Bypass-Tunnel-Reminder": "true",
+            "User-Agent": "Mozilla/5.0"
+        }
+
         # Search logic
         search_info = ""
         if "search" in prompt.lower():
@@ -52,20 +57,23 @@ class DolphinWebAI:
         full_prompt = f"Context: {context}\n{search_info}\nUser: {prompt}\nAI:"
         
         payload = {"model": self.model, "prompt": full_prompt, "stream": False}
+        
         try:
-            response = requests.post(self.ollama_url, json=payload, timeout=90)
-            answer = response.json().get("response", "No response from AI.")
-            
-            # Save to Memory
-            self.cursor.execute("INSERT INTO brain VALUES (?, ?)", (prompt, answer))
-            self.conn.commit()
-            return answer
-        except:
-            return "Connection Error: Please ensure Cloudflare Tunnel is running on your local PC."
+            # headers=headers ကို ဒီမှာ သုံးထားပါတယ်
+            response = requests.post(self.ollama_url, json=payload, headers=headers, timeout=120)
+            if response.status_code == 200:
+                answer = response.json().get("response", "No response from AI.")
+                # Save to Memory
+                self.cursor.execute("INSERT INTO brain VALUES (?, ?)", (prompt, answer))
+                self.conn.commit()
+                return answer
+            else:
+                return f"Error: Server returned status {response.status_code}. Make sure you verified your IP in the browser."
+        except Exception as e:
+            return f"Connection Error: {str(e)}. Please check if your LocalTunnel is still running."
 
 # --- Streamlit UI ---
 st.title("🐬 Dolphin-Llama3 Private Online AI")
-st.sidebar.title("AI Settings")
 
 if 'ai' not in st.session_state:
     st.session_state.ai = DolphinWebAI()
@@ -74,34 +82,9 @@ if 'messages' not in st.session_state:
     st.session_state.messages = []
 
 # Sidebar PDF Upload
-uploaded_file = st.sidebar.file_content = st.sidebar.file_uploader("Upload PDF for Context", type="pdf")
+st.sidebar.title("AI Settings")
+uploaded_file = st.sidebar.file_uploader("Upload PDF for Context", type="pdf")
 pdf_text = ""
 if uploaded_file:
     reader = PyPDF2.PdfReader(uploaded_file)
-    for page in reader.pages[:3]:
-        pdf_text += page.extract_text()
-    st.sidebar.success("PDF Context Loaded!")
-
-# Chat Interface
-for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
-        st.markdown(message["content"])
-
-if prompt := st.chat_input("What is on your mind?"):
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
-        st.markdown(prompt)
-
-    with st.chat_message("assistant"):
-        with st.spinner("Thinking..."):
-            response = st.session_state.ai.ask(prompt, pdf_text)
-            st.markdown(response)
-            st.session_state.messages.append({"role": "assistant", "content": response})
-            
-            # Voice Output (Optional)
-            if st.sidebar.checkbox("Enable Voice"):
-                tts = gTTS(text=response[:200], lang='en')
-                tts.save("reply.mp3")
-                st.audio("reply.mp3")
-
-
+    for
