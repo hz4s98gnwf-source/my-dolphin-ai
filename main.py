@@ -21,7 +21,7 @@ st.markdown("""
 class DolphinWebAI:
     def __init__(self):
         # ⚠️ အရေးကြီး: အောက်က Link ကို သင်ရလာတဲ့ Pinggy link အသစ်နဲ့ လဲပေးပါ
-        self.ollama_url = "https://သင့်ရဲ့-pinggy-link-ဒီမှာထည့်/api/generate" 
+        self.ollama_url = "https://fyrob-204-157-172-165.a.free.pinggy.link/api/generate" 
         self.model = "dolphin-llama3:latest"
         self.wiki = wikipediaapi.Wikipedia(
             language='en',
@@ -109,3 +109,4 @@ if prompt := st.chat_input("What is on your mind?"):
                     tts.save("reply.mp3")
                     st.audio("reply.mp3")
                 except: pass
+
