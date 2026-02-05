@@ -11,7 +11,7 @@ import os
 # --- Super Intelligence Engine ---
 class SuperBrain:
     def __init__(self):
-        self.ollama_url = "http://localhost:11434/api/generate"
+        self.ollama_url = "https://fifty-dingos-add.loca.lt"
         self.model = "dolphin-llama3:latest"
         
         # Wikipedia Setup with Proper User Agent
@@ -172,4 +172,5 @@ class SuperAIApp(ctk.CTk):
 if __name__ == "__main__":
     app = SuperAIApp()
     app.mainloop()
+
     
