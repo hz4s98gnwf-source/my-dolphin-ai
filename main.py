@@ -21,7 +21,7 @@ st.markdown("""
 class DolphinWebAI:
     def __init__(self):
         # Cloudflare Tunnel URL ကို ရလာတဲ့အခါ အောက်က localhost နေရာမှာ အစားထိုးပါ
-        self.ollama_url = "ttps://fifty-dingos-add.loca.lt" 
+        self.ollama_url = "https://fifty-dingos-add.loca.lt/api/generate" 
         self.model = "dolphin-llama3:latest"
         self.wiki = wikipediaapi.Wikipedia(
             language='en',
@@ -102,3 +102,4 @@ if prompt := st.chat_input("What is on your mind?"):
                 tts = gTTS(text=response[:200], lang='en')
                 tts.save("reply.mp3")
                 st.audio("reply.mp3")
+
