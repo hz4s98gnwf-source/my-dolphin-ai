@@ -20,8 +20,8 @@ st.markdown("""
 # --- Logic Class ---
 class DolphinWebAI:
     def __init__(self):
-        # အောက်က Link ကို သင့်ရဲ့ လက်ရှိ LocalTunnel Link နဲ့ အမြဲလဲပေးပါ
-        self.ollama_url = "https://fifty-dingos-add.loca.lt/api/generate" 
+        # ⚠️ အရေးကြီး: အောက်က Link ကို သင်ရလာတဲ့ Pinggy link အသစ်နဲ့ လဲပေးပါ
+        self.ollama_url = "https://သင့်ရဲ့-pinggy-link-ဒီမှာထည့်/api/generate" 
         self.model = "dolphin-llama3:latest"
         self.wiki = wikipediaapi.Wikipedia(
             language='en',
@@ -41,13 +41,12 @@ class DolphinWebAI:
         except: return None
 
     def ask(self, prompt, context=""):
-        # LocalTunnel 403 Error ကျော်ဖို့ Header ထည့်ခြင်း
+        # Header for Pinggy/Ngrok Bypass
         headers = {
-            "Bypass-Tunnel-Reminder": "true",
-            "User-Agent": "Mozilla/5.0"
+            "User-Agent": "Mozilla/5.0",
+            "Accept": "application/json"
         }
 
-        # Search logic
         search_info = ""
         if "search" in prompt.lower():
             topic = prompt.lower().replace("search", "").strip()
@@ -55,22 +54,19 @@ class DolphinWebAI:
             if web_data: search_info = f"\nWeb Data: {web_data}"
 
         full_prompt = f"Context: {context}\n{search_info}\nUser: {prompt}\nAI:"
-        
         payload = {"model": self.model, "prompt": full_prompt, "stream": False}
         
         try:
-            # headers=headers ကို ဒီမှာ သုံးထားပါတယ်
             response = requests.post(self.ollama_url, json=payload, headers=headers, timeout=120)
             if response.status_code == 200:
                 answer = response.json().get("response", "No response from AI.")
-                # Save to Memory
                 self.cursor.execute("INSERT INTO brain VALUES (?, ?)", (prompt, answer))
                 self.conn.commit()
                 return answer
             else:
-                return f"Error: Server returned status {response.status_code}. Make sure you verified your IP in the browser."
+                return f"Error: Status {response.status_code}. Make sure your Pinggy tunnel is active."
         except Exception as e:
-            return f"Connection Error: {str(e)}. Please check if your LocalTunnel is still running."
+            return f"Connection Error: {str(e)}"
 
 # --- Streamlit UI ---
 st.title("🐬 Dolphin-Llama3 Private Online AI")
@@ -81,10 +77,35 @@ if 'ai' not in st.session_state:
 if 'messages' not in st.session_state:
     st.session_state.messages = []
 
-# Sidebar PDF Upload
+# Sidebar
 st.sidebar.title("AI Settings")
-uploaded_file = st.sidebar.file_uploader("Upload PDF for Context", type="pdf")
+uploaded_file = st.sidebar.file_uploader("Upload PDF", type="pdf")
 pdf_text = ""
 if uploaded_file:
     reader = PyPDF2.PdfReader(uploaded_file)
-    for
+    for page in reader.pages[:3]:
+        pdf_text += page.extract_text()
+    st.sidebar.success("PDF Context Loaded!")
+
+# Chat Interface
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+if prompt := st.chat_input("What is on your mind?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        with st.spinner("Thinking..."):
+            response = st.session_state.ai.ask(prompt, pdf_text)
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
+            
+            if st.sidebar.checkbox("Enable Voice"):
+                try:
+                    tts = gTTS(text=response[:200], lang='en')
+                    tts.save("reply.mp3")
+                    st.audio("reply.mp3")
+                except: pass
