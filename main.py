@@ -14,14 +14,15 @@ st.markdown("""
     <style>
     .main { background-color: #0e1117; }
     .stTextInput>div>div>input { color: #00d4ff; }
+    .stChatMessage { border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
 # --- Logic Class ---
 class DolphinWebAI:
     def __init__(self):
-        # ⚠️ အရေးကြီး: အောက်က Link ကို သင်ရလာတဲ့ Pinggy link အသစ်နဲ့ လဲပေးပါ
-        self.ollama_url = "https://fyrob-204-157-172-165.a.free.pinggy.link/api/generate" 
+        # ⚠️ အရေးကြီး: သင်ရလာတဲ့ Link အသစ်ကို ဒီနေရာမှာ အစားထိုးလိုက်ပါပြီ
+        self.ollama_url = "https://lvijx-204-157-172-165.a.free.pinggy.link/api/generate" 
         self.model = "dolphin-llama3:latest"
         self.wiki = wikipediaapi.Wikipedia(
             language='en',
@@ -41,12 +42,13 @@ class DolphinWebAI:
         except: return None
 
     def ask(self, prompt, context=""):
-        # Header for Pinggy/Ngrok Bypass
+        # Tunnel Warning တွေကို ကျော်ဖြတ်ဖို့ Headers
         headers = {
             "User-Agent": "Mozilla/5.0",
             "Accept": "application/json"
         }
 
+        # Search logic
         search_info = ""
         if "search" in prompt.lower():
             topic = prompt.lower().replace("search", "").strip()
@@ -57,16 +59,18 @@ class DolphinWebAI:
         payload = {"model": self.model, "prompt": full_prompt, "stream": False}
         
         try:
-            response = requests.post(self.ollama_url, json=payload, headers=headers, timeout=120)
+            # AI ဆီသို့ တိုက်ရိုက် Request ပို့ခြင်း
+            response = requests.post(self.ollama_url, json=payload, headers=headers, timeout=150)
+            
             if response.status_code == 200:
                 answer = response.json().get("response", "No response from AI.")
                 self.cursor.execute("INSERT INTO brain VALUES (?, ?)", (prompt, answer))
                 self.conn.commit()
                 return answer
             else:
-                return f"Error: Status {response.status_code}. Make sure your Pinggy tunnel is active."
+                return f"Server Error: {response.status_code}. ကျေးဇူးပြု၍ Browser မှာ Link ကိုဖွင့်ပြီး 'Proceed' နှိပ်ပေးပါ။"
         except Exception as e:
-            return f"Connection Error: {str(e)}"
+            return f"Connection Error: {str(e)}. သင့်စက်ထဲက Terminal ပိတ်သွားပြီလား စစ်ဆေးပေးပါ။"
 
 # --- Streamlit UI ---
 st.title("🐬 Dolphin-Llama3 Private Online AI")
@@ -79,7 +83,7 @@ if 'messages' not in st.session_state:
 
 # Sidebar
 st.sidebar.title("AI Settings")
-uploaded_file = st.sidebar.file_uploader("Upload PDF", type="pdf")
+uploaded_file = st.sidebar.file_uploader("Upload PDF for Context", type="pdf")
 pdf_text = ""
 if uploaded_file:
     reader = PyPDF2.PdfReader(uploaded_file)
@@ -109,4 +113,3 @@ if prompt := st.chat_input("What is on your mind?"):
                     tts.save("reply.mp3")
                     st.audio("reply.mp3")
                 except: pass
-
